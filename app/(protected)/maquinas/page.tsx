@@ -30,6 +30,7 @@ interface Maquina {
   nome: string;
   localizacao: string;
   descricao: string;
+  horas_funcionamento: number | null;
   created_at: string;
 }
 
@@ -42,6 +43,7 @@ export default function MaquinasPage() {
   const [nome, setNome] = useState("");
   const [localizacao, setLocalizacao] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [horasFuncionamento, setHorasFuncionamento] = useState<string>("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -97,6 +99,7 @@ export default function MaquinasPage() {
     setNome("");
     setLocalizacao("");
     setDescricao("");
+    setHorasFuncionamento("");
     setOpen(true);
   };
 
@@ -108,6 +111,7 @@ export default function MaquinasPage() {
     setNome(machine.nome);
     setLocalizacao(machine.localizacao);
     setDescricao(machine.descricao || "");
+    setHorasFuncionamento(machine.horas_funcionamento ? String(machine.horas_funcionamento) : "");
     setOpen(true);
   };
 
@@ -159,7 +163,12 @@ export default function MaquinasPage() {
       return;
     }
 
-    const payload = { nome, localizacao, descricao };
+    const payload = { 
+      nome, 
+      localizacao, 
+      descricao, 
+      horas_funcionamento: horasFuncionamento ? parseFloat(horasFuncionamento) : null 
+    };
     const isUpdate = isEditMode && selectedMachine !== null;
     const url = isUpdate
       ? `http://localhost:3001/maquinas/${selectedMachine?.id}`
@@ -233,6 +242,7 @@ export default function MaquinasPage() {
                   <TableCell>Nome</TableCell>
                   <TableCell>Localização</TableCell>
                   <TableCell>Descrição</TableCell>
+                  <TableCell>Horas Funcionamento</TableCell>
                   <TableCell>Cadastro</TableCell>
                   <TableCell align="center">Ações</TableCell>
                 </TableRow>
@@ -318,6 +328,15 @@ export default function MaquinasPage() {
                 onChange={(event) => setDescricao(event.target.value)}
                 multiline
                 minRows={3}
+                fullWidth
+              />
+              <TextField
+                label="Horas de Funcionamento (MTBF)"
+                value={horasFuncionamento}
+                onChange={(event) => setHorasFuncionamento(event.target.value)}
+                type="number"
+                inputProps={{ step: "0.01", min: "0" }}
+                helperText="Horas totais de funcionamento da máquina (usado para cálculo de MTBF)"
                 fullWidth
               />
             </Stack>

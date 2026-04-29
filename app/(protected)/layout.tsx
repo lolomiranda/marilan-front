@@ -18,6 +18,8 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import PeopleIcon from "@mui/icons-material/People";
 import LogoutIcon from "@mui/icons-material/Logout";
+import BarChartIcon from "@mui/icons-material/BarChart";
+import StorageIcon from "@mui/icons-material/Storage";
 
 interface UserData {
   id: number;
@@ -54,6 +56,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   const menuItems = [
     { label: "Dashboard", href: "/dashboard", icon: <DashboardIcon />, roles: ["admin"] },
+    { label: "Planilhas", href: "/planilhas", icon: <StorageIcon />, roles: ["admin"] },
+    { label: "PCM", href: "/pcm", icon: <BarChartIcon />, roles: ["admin", "pcm"] },
     { label: "Ordens de Serviço", href: "/ordens-servico", icon: <AssignmentIcon />, roles: ["admin", "operador", "manutentor"] },
     { label: "Máquinas", href: "/maquinas", icon: <DashboardIcon />, roles: ["admin", "operador", "manutentor"] },
     { label: "Usuários", href: "/usuarios", icon: <PeopleIcon />, roles: ["admin"] },
@@ -112,6 +116,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
       <Box component="main" sx={{ flexGrow: 1, p: 4, bgcolor: "background.default" }}>
         <Toolbar />
+        <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
+          Bem-vindo, {user.nome}!
+        </Typography>
         {children}
       </Box>
     </Box>

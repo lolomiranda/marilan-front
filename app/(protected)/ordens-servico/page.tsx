@@ -42,6 +42,10 @@ interface Ordem {
   manutentor_id: number | null;
   manutentor_nome: string | null;
   data_abertura: string;
+  tarefa?: string;
+  area?: string;
+  causa?: string;
+  observacoes?: string;
 }
 
 interface Maquina {
@@ -77,9 +81,48 @@ const motivos = [
   { value: "Medições e ajuste", label: "Medições e ajuste" },
 ];
 
+const getDefaultDateTimeLocal = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now - offset).toISOString().slice(0, 16);
+};
+
+const tarefas = [
+  { value: "Inspeção", label: "Inspeção" },
+  { value: "Lubrificação", label: "Lubrificação" },
+  { value: "Ajuste", label: "Ajuste" },
+  { value: "Substituição", label: "Substituição" },
+  { value: "Calibração", label: "Calibração" },
+  { value: "Limpeza", label: "Limpeza" },
+  { value: "Reparo", label: "Reparo" },
+  { value: "Instalação", label: "Instalação" },
+];
+
+const areas = [
+  { value: "Mecânica", label: "Mecânica" },
+  { value: "Elétrica", label: "Elétrica" },
+  { value: "Eletrônica", label: "Eletrônica" },
+];
+
+const causas = [
+  { value: "Desgaste", label: "Desgaste" },
+  { value: "Falha elétrica", label: "Falha elétrica" },
+  { value: "Sobrecarga", label: "Sobrecarga" },
+  { value: "Falta de lubrificação", label: "Falta de lubrificação" },
+  { value: "Vibração excessiva", label: "Vibração excessiva" },
+  { value: "Contaminação", label: "Contaminação" },
+  { value: "Erro de operação", label: "Erro de operação" },
+  { value: "Falta de manutenção", label: "Falta de manutenção" },
+  { value: "Defeito de fabricação", label: "Defeito de fabricação" },
+  { value: "Envelhecimento", label: "Envelhecimento" },
+  { value: "Choque térmico", label: "Choque térmico" },
+  { value: "Outros", label: "Outros" },
+];
+
 const statusLiberacaoOptions = [
-  { value: "liberada", label: "Liberada para produção" },
-  { value: "nao_liberada", label: "Não liberada" },
+  { value: "liberada", label: "Liberada" },
+  { value: "nao_liberada", label: "Não Liberada" },
+  { value: "liberada_com_restricoes", label: "Liberada com Restrições" },
 ];
 
 const formatStatus = (status: string) => {
@@ -107,6 +150,8 @@ export default function OrdensServicoPage() {
   const [maquinaId, setMaquinaId] = useState<number | string>("");
   const [operadorId, setOperadorId] = useState<number | string>("");
   const [descricao, setDescricao] = useState("");
+  const [linhaLote, setLinhaLote] = useState("");
+  const [dataAbertura, setDataAbertura] = useState(getDefaultDateTimeLocal());
   const [prioridade, setPrioridade] = useState("normal");
   const [motivo, setMotivo] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -118,6 +163,9 @@ export default function OrdensServicoPage() {
   const [openConclude, setOpenConclude] = useState(false);
   const [selectedOrdem, setSelectedOrdem] = useState<Ordem | null>(null);
   const [acaoRealizada, setAcaoRealizada] = useState("");
+  const [tarefa, setTarefa] = useState("");
+  const [area, setArea] = useState("");
+  const [causa, setCausa] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [statusLiberacao, setStatusLiberacao] = useState("liberada");
 
@@ -196,6 +244,9 @@ export default function OrdensServicoPage() {
   const handleOpenConclude = (ordem: Ordem) => {
     setSelectedOrdem(ordem);
     setAcaoRealizada("");
+    setTarefa("");
+    setArea("");
+    setCausa("");
     setObservacoes("");
     setStatusLiberacao("liberada");
     setOpenConclude(true);
@@ -208,7 +259,14 @@ export default function OrdensServicoPage() {
       const response = await fetch(`http://localhost:3001/ordens-servico/${selectedOrdem.id}/concluir`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "X-User-Id": String(currentUser.id), "X-User-Role": currentUser.role },
-        body: JSON.stringify({ acao_realizada: acaoRealizada, observacoes: `${observacoes} | Status: ${statusLiberacaoOptions.find(o => o.value === statusLiberacao)?.label}` }),
+        body: JSON.stringify({
+          acao_realizada: acaoRealizada,
+          tarefa: tarefa || null,
+          area: area || null,
+          causa: causa || null,
+          observacoes: observacoes,
+          status_liberacao: statusLiberacao
+        }),
       });
       if (response.ok) {
         setActionMessage("Ordem concluída com sucesso!");
@@ -218,8 +276,20 @@ export default function OrdensServicoPage() {
     } finally { setSubmitting(false); }
   };
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => { setOpen(false); setDescricao(""); setMaquinaId(""); setPrioridade("normal"); setMotivo(""); };
+  const handleOpen = () => {
+    setOpen(true);
+    setLinhaLote("");
+    setDataAbertura(getDefaultDateTimeLocal());
+  };
+  const handleClose = () => {
+    setOpen(false);
+    setDescricao("");
+    setMaquinaId("");
+    setLinhaLote("");
+    setPrioridade("normal");
+    setMotivo("");
+    setDataAbertura(getDefaultDateTimeLocal());
+  };
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -228,7 +298,15 @@ export default function OrdensServicoPage() {
       await fetch("http://localhost:3001/ordens-servico", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-User-Id": String(currentUser?.id), "X-User-Role": currentUser?.role || "" },
-        body: JSON.stringify({ maquina_id: Number(maquinaId), descricao_problema: descricao, operador_id: Number(operadorId), prioridade, motivo }),
+        body: JSON.stringify({
+          maquina_id: Number(maquinaId),
+          linha_lote: linhaLote,
+          descricao_problema: descricao,
+          operador_id: Number(operadorId),
+          prioridade,
+          motivo,
+          data_abertura: dataAbertura,
+        }),
       });
       handleClose();
       await fetchData();
@@ -304,6 +382,26 @@ export default function OrdensServicoPage() {
                             {maquinas.map((m) => <MenuItem key={m.id} value={m.id}>{m.nome}</MenuItem>)}
                         </Select>
                     </FormControl>
+                    {currentUser?.role === "admin" ? (
+                      <FormControl fullWidth>
+                        <InputLabel>Operador</InputLabel>
+                        <Select value={operadorId} label="Operador" onChange={(e) => setOperadorId(e.target.value as string)} required>
+                          {operadores.map((user) => <MenuItem key={user.id} value={user.id}>{user.nome} ({user.cracha})</MenuItem>)}
+                        </Select>
+                      </FormControl>
+                    ) : (
+                      <TextField label="Crachá do Operador" value={currentUser?.cracha || ""} disabled fullWidth />
+                    )}
+                    <TextField label="Linha / Lote" value={linhaLote} onChange={(e) => setLinhaLote(e.target.value)} required fullWidth />
+                    <TextField
+                      label="Data / Hora de início"
+                      type="datetime-local"
+                      value={dataAbertura}
+                      onChange={(e) => setDataAbertura(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      required
+                      fullWidth
+                    />
                     <FormControl fullWidth>
                         <InputLabel>Prioridade</InputLabel>
                         <Select value={prioridade} label="Prioridade" onChange={(e) => setPrioridade(e.target.value as string)} required>
@@ -328,18 +426,37 @@ export default function OrdensServicoPage() {
 
       {/* NOVO MODAL DE CONCLUSÃO (REQUISITO MANUTENTOR) */}
       <Dialog open={openConclude} onClose={() => setOpenConclude(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Finalizar OS #{selectedOrdem?.id}</DialogTitle>
+        <DialogTitle>Relatório do Manutentor - OS #{selectedOrdem?.id}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={3}>
             <Box sx={{ p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}>
               <Typography variant="caption" fontWeight="bold">VISUALIZAÇÃO DO PROBLEMA:</Typography>
               <Typography variant="body2">{selectedOrdem?.descricao_problema}</Typography>
             </Box>
-            <TextField label="Diagnóstico Técnico" multiline rows={3} required value={acaoRealizada} onChange={(e) => setAcaoRealizada(e.target.value)} fullWidth />
-            <TextField label="Peças Utilizadas" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} fullWidth placeholder="Ex: 1x Correia, 1L Óleo" />
+            <TextField label="Manutentor" value={currentUser?.nome || ""} disabled fullWidth />
             <FormControl fullWidth>
-              <InputLabel>Status de Liberação (Ação Final)</InputLabel>
-              <Select value={statusLiberacao} label="Status de Liberação (Ação Final)" onChange={(e) => setStatusLiberacao(e.target.value as string)} required>
+              <InputLabel>Tarefa</InputLabel>
+              <Select value={tarefa} label="Tarefa" onChange={(e) => setTarefa(e.target.value as string)}>
+                {tarefas.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Área</InputLabel>
+              <Select value={area} label="Área" onChange={(e) => setArea(e.target.value as string)}>
+                {areas.map((a) => <MenuItem key={a.value} value={a.value}>{a.label}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Causa</InputLabel>
+              <Select value={causa} label="Causa" onChange={(e) => setCausa(e.target.value as string)}>
+                {causas.map((c) => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField label="Ação Realizada" multiline rows={3} required value={acaoRealizada} onChange={(e) => setAcaoRealizada(e.target.value)} fullWidth />
+            <TextField label="Observações" multiline rows={2} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} fullWidth />
+            <FormControl fullWidth>
+              <InputLabel>Status de Liberação</InputLabel>
+              <Select value={statusLiberacao} label="Status de Liberação" onChange={(e) => setStatusLiberacao(e.target.value as string)} required>
                 {statusLiberacaoOptions.map((s) => <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>)}
               </Select>
             </FormControl>
